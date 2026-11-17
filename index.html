@@ -206,6 +206,7 @@ var COLORES = { vacuna: '#2E7D32', movimiento: '#1565C0', servicio: '#4527A0', c
 
 function abrir(p) {
   pagina = p;
+  pintarEstado();
   var marco = $('marco'); marco.style.display = 'none'; marco.removeAttribute('srcdoc');
   $('atras').style.display = p === 'menu' ? 'none' : '';
   window.scrollTo(0, 0);
