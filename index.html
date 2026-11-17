@@ -121,7 +121,7 @@ function sincronizar() {
   (function siguiente() {
     var it = cola().filter(function (x) { return x.estado !== 'error'; })[0];
     if (!it) return terminar();
-    api(it.fn, it.args, it.id, 30000).then(function () {
+    api(it.fn, it.args, it.id, 120000).then(function () {
       grabar('cola', cola().filter(function (x) { return x.id !== it.id; }));
       var h = leer('hechos', []); h.unshift({ d: describir(it), cuando: new Date().toISOString() }); grabar('hechos', h.slice(0, 20));
       subidas++; siguiente();
@@ -161,7 +161,7 @@ window.appCall = function (fn, args) {
     var it = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), fn: fn, args: args, creado: new Date().toISOString() };
     if (ini && args && args[0]) args[0].quien = ini.quien;
     // Con señal intentamos guardar directo (así ves los errores al instante); si no, a la cola
-    return api(fn, args, it.id, 15000).then(function (r) {
+    return api(fn, args, it.id, 90000).then(function (r) {
       var h = leer('hechos', []); h.unshift({ d: describir(it), cuando: new Date().toISOString() }); grabar('hechos', h.slice(0, 20));
       ultimoGuardado = 'subido'; actualizarDatos(); return r;
     }, function (e) {
@@ -183,7 +183,7 @@ window.appFin = function () {
   var d = document.createElement('div'); d.className = 'fin';
   d.innerHTML = '<div class="finbox"><div style="font-size:54px">' + (cola_ ? '📲' : '✅') + '</div>' +
     '<div style="font-size:21px;font-weight:bold;margin:6px 0">' + (cola_ ? 'Guardado en el teléfono' : '¡Guardado en la planilla!') + '</div>' +
-    (cola_ ? '<div class="ayuda" style="font-size:15px">No hay señal. Se sube sola cuando vuelva la cobertura.</div>' : '') +
+    (cola_ ? '<div class="ayuda" style="font-size:15px">' + (navigator.onLine ? 'La planilla tardó en responder.' : 'No hay señal.') + ' Se sube sola en un rato, no hace falta volver a cargarla.</div>' : '') +
     '<button class="btn" id="otra">Cargar otra</button><button class="btn gris" id="volver">Volver al menú</button></div>';
   document.body.appendChild(d);
   $('otra').onclick = function () { d.remove(); abrir(pagina); };
