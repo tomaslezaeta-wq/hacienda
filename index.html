@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hacienda">
+<meta name="theme-color" content="#1B5E20">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Hacienda</title>
+<style>
+:root{--verde:#1B5E20;--claro:#E8F5E9;--rojo:#C62828;--gris:#616161}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:#212121;font-family:-apple-system,Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}
+.barra{position:fixed;top:0;left:0;right:0;z-index:10;background:var(--verde);color:#fff;padding:calc(env(safe-area-inset-top) + 10px) 12px 10px;display:flex;align-items:center;gap:10px;min-height:56px}
+.barra button{color:#fff;font-weight:bold;font-size:16px;background:rgba(255,255,255,.2);border:0;padding:8px 12px;border-radius:10px;white-space:nowrap}
+.barra .t{font-weight:bold;font-size:18px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.estado{font-size:12px;font-weight:bold;padding:5px 9px;border-radius:20px;background:rgba(255,255,255,.2);white-space:nowrap}
+#pag{padding:calc(env(safe-area-inset-top) + 66px) 12px calc(env(safe-area-inset-bottom) + 30px)}
+.cab{background:var(--claro);border-radius:14px;padding:14px;margin-bottom:10px}
+.cab .n{font-size:44px;font-weight:bold;color:var(--verde);line-height:1}
+.cab .c{font-size:20px;font-weight:bold;color:var(--verde);margin-top:6px}
+.cab .u{font-size:13px;color:#555;margin-top:6px}
+h3{margin:18px 0 8px;font-size:15px;color:var(--verde)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{display:flex;align-items:center;justify-content:center;text-align:center;min-height:78px;border-radius:14px;color:#fff;font-weight:bold;font-size:16px;border:0;padding:8px;box-shadow:0 2px 4px rgba(0,0,0,.15);width:100%}
+.tile.big{min-height:96px;font-size:18px}
+.aviso{padding:12px;border-radius:12px;background:var(--claro);color:var(--verde);font-weight:bold;margin:0 0 10px;font-size:15px}
+.aviso.amar{background:#FFF8E1;color:#8D6E00}
+.aviso.err{background:#FFEBEE;color:var(--rojo)}
+.aviso button{margin-top:8px}
+.btn{display:block;width:100%;padding:16px;font-size:19px;font-weight:bold;border:0;border-radius:12px;color:#fff;background:#2E7D32;margin-top:12px}
+.btn.gris{background:#9E9E9E}
+.btn.rojo{background:var(--rojo)}
+.btn.chico{display:inline-block;width:auto;padding:8px 14px;font-size:15px;margin:6px 6px 0 0}
+input.cod{width:100%;font-size:18px;padding:12px;border:2px solid #9E9E9E;border-radius:10px;margin-top:10px}
+.item{border:1px solid #ddd;border-radius:12px;padding:12px;margin-bottom:10px}
+.item .d{font-weight:bold;font-size:16px}
+.item .m{font-size:13px;color:var(--gris);margin-top:4px}
+.item.error{border-color:var(--rojo);background:#FFF5F5}
+.ayuda{font-size:13px;color:var(--gris);margin:4px 0 8px}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -12px;padding:0 12px}
+table{border-collapse:collapse;font-size:13px}
+td{border-bottom:1px solid #eee;padding:6px 8px;white-space:nowrap;vertical-align:top}
+tr.h td{font-weight:bold;background:#F5F5F5;white-space:normal}
+#marco{position:fixed;left:0;right:0;bottom:0;border:0;width:100%;background:#fff;display:none}
+.fin{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+.finbox{background:#fff;border-radius:16px;padding:22px;width:100%;max-width:420px;text-align:center}
+</style>
+</head>
+<body>
+<div class="barra"><button id="atras" style="display:none">← Menú</button><div class="t" id="titulo">🐄 HACIENDA</div><div class="estado" id="estado"></div></div>
+<div id="pag"></div>
+<iframe id="marco" title="Formulario"></iframe>
+
+<script>
+// ============ CONFIGURACIÓN ============
+var API = '__API_URL__';
+
+// ============ ALMACENAMIENTO EN EL TELÉFONO ============
+function leer(k, def) { try { var v = localStorage.getItem('hk_' + k); return v ? JSON.parse(v) : def; } catch (e) { return def; } }
+function grabar(k, v) { try { localStorage.setItem('hk_' + k, JSON.stringify(v)); } catch (e) {} }
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function hora(iso) { if (!iso) return ''; var d = new Date(iso); return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); }
+
+// Clave de la persona: viene una sola vez en el link (?k=...)
+(function () {
+  var m = (location.search + location.hash).match(/[?#&]k=([a-f0-9]{16,})/i);
+  if (m) grabar('k', m[1]);
+})();
+
+// ============ COMUNICACIÓN CON LA PLANILLA ============
+function api(fn, args, id, ms) {
+  var ctrl = window.AbortController ? new AbortController() : null;
+  var t = setTimeout(function () { if (ctrl) ctrl.abort(); }, ms || 20000);
+  return fetch(API, { method: 'POST', body: JSON.stringify({ k: leer('k'), fn: fn, args: args || [], id: id }), signal: ctrl ? ctrl.signal : undefined, redirect: 'follow' })
+    .then(function (r) { if (!r.ok) throw { red: true }; return r.json(); })
+    .catch(function (e) { throw (e && e.red !== undefined) ? e : { red: true }; })
+    .then(function (j) {
+      clearTimeout(t);
+      if (!j.ok) { if (j.auth === false) { grabar('authmal', true); } throw { red: false, msg: j.error }; }
+      grabar('authmal', false);
+      return j.r;
+    }, function (e) { clearTimeout(t); throw e; });
+}
+
+var actualizando = false;
+function actualizarDatos(conVistas) {
+  if (actualizando || !leer('k')) return Promise.resolve();
+  actualizando = true; pintarEstado();
+  return api('init', [], null, 25000).then(function (r) {
+    grabar('init', r);
+    return conVistas === false ? null : api('vistas', [], null, 30000).then(function (v) { grabar('vistas', { d: v, cuando: new Date().toISOString() }); });
+  }).catch(function () {}).then(function () { actualizando = false; pintarEstado(); if (pagina === 'menu') menu(); });
+}
+
+// ============ COLA DE CARGAS ============
+function cola() { return leer('cola', []); }
+function describir(it) {
+  var f = (it.args && it.args[0]) || {};
+  var partes = [];
+  if (it.fn === 'guardarVacuna') partes = ['💉', f.cantidad, f.cat, f.campo, '—', (f.vacunas || []).join(', ')];
+  else if (it.fn === 'guardarMovimiento') partes = ['🐄', f.tipo, f.cantidad, f.cat, f.campo, f.campoDestino ? '→ ' + f.campoDestino : '', f.catDestino ? '→ ' + f.catDestino : ''];
+  else if (it.fn === 'guardarServicio') partes = ['💕 Servicio', f.tipo || '', f.cat || '', f.campo || '', f.cantidad || ''];
+  else partes = [it.fn];
+  return partes.filter(function (x) { return x !== undefined && x !== null && x !== ''; }).join(' ') + (f.fecha ? '  (' + f.fecha.split('-').reverse().join('/') + ')' : '');
+}
+
+var sincronizando = false;
+function sincronizar() {
+  if (sincronizando || !leer('k')) return;
+  var pend = cola().filter(function (x) { return x.estado !== 'error'; });
+  if (!pend.length) { pintarEstado(); return; }
+  sincronizando = true; pintarEstado();
+  var subidas = 0;
+  (function siguiente() {
+    var it = cola().filter(function (x) { return x.estado !== 'error'; })[0];
+    if (!it) return terminar();
+    api(it.fn, it.args, it.id, 30000).then(function () {
+      grabar('cola', cola().filter(function (x) { return x.id !== it.id; }));
+      var h = leer('hechos', []); h.unshift({ d: describir(it), cuando: new Date().toISOString() }); grabar('hechos', h.slice(0, 20));
+      subidas++; siguiente();
+    }, function (e) {
+      if (e.red) return terminar(); // sin señal: se reintenta después
+      grabar('cola', cola().map(function (x) { if (x.id === it.id) { x.estado = 'error'; x.error = e.msg; } return x; }));
+      siguiente();
+    });
+  })();
+  function terminar() {
+    sincronizando = false; pintarEstado();
+    if (subidas) { actualizarDatos(); if (pagina === 'menu' || pagina === 'pend') abrir(pagina); }
+  }
+}
+window.addEventListener('online', sincronizar);
+document.addEventListener('visibilitychange', function () { if (!document.hidden) { sincronizar(); } });
+setInterval(sincronizar, 30000);
+
+function pintarEstado() {
+  var c = cola(), err = c.filter(function (x) { return x.estado === 'error'; }).length, p = c.length - err;
+  var t = sincronizando ? '⏫ Subiendo…' : p ? '⏳ ' + p + ' sin subir' : err ? '⚠️ ' + err + ' con error' : actualizando ? '🔄' : (navigator.onLine ? '✅ Al día' : '📵 Sin señal');
+  $('estado').textContent = t;
+}
+
+// ============ LO QUE USAN LOS FORMULARIOS (reemplaza google.script.run) ============
+window.appCall = function (fn, args) {
+  var ini = leer('init');
+  if (fn === 'datosFormulario') {
+    var desdeCache = function () {
+      ini = leer('init');
+      if (!ini) throw new Error('Abrí la app una vez con señal para descargar los datos.');
+      var d = JSON.parse(JSON.stringify(ini.datos)); d.hoy = hoyISO(); d.usuario = ini.quien; return d;
+    };
+    return api('init', [], null, 6000).then(function (r) { grabar('init', r); return desdeCache(); }, function () { return desdeCache(); });
+  }
+  if (/^guardar/.test(fn)) {
+    var it = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), fn: fn, args: args, creado: new Date().toISOString() };
+    if (ini && args && args[0]) args[0].quien = ini.quien;
+    // Con señal intentamos guardar directo (así ves los errores al instante); si no, a la cola
+    return api(fn, args, it.id, 15000).then(function (r) {
+      var h = leer('hechos', []); h.unshift({ d: describir(it), cuando: new Date().toISOString() }); grabar('hechos', h.slice(0, 20));
+      ultimoGuardado = 'subido'; actualizarDatos(); return r;
+    }, function (e) {
+      if (!e.red) throw new Error(e.msg);
+      var c = cola(); c.push(it); grabar('cola', c); pintarEstado();
+      ultimoGuardado = 'cola'; return 1;
+    });
+  }
+  // Corregir / anular: necesita señal
+  return api(fn, args, null, 20000).catch(function (e) {
+    throw new Error(e.red ? 'Sin señal. Para corregir o anular necesitás conexión. (Las cargas que todavía no se subieron se borran desde "Sin subir").' : e.msg);
+  });
+};
+var ultimoGuardado = '';
+
+window.appFin = function () {
+  if (document.querySelector('.fin')) return;
+  var cola_ = ultimoGuardado === 'cola';
+  var d = document.createElement('div'); d.className = 'fin';
+  d.innerHTML = '<div class="finbox"><div style="font-size:54px">' + (cola_ ? '📲' : '✅') + '</div>' +
+    '<div style="font-size:21px;font-weight:bold;margin:6px 0">' + (cola_ ? 'Guardado en el teléfono' : '¡Guardado en la planilla!') + '</div>' +
+    (cola_ ? '<div class="ayuda" style="font-size:15px">No hay señal. Se sube sola cuando vuelva la cobertura.</div>' : '') +
+    '<button class="btn" id="otra">Cargar otra</button><button class="btn gris" id="volver">Volver al menú</button></div>';
+  document.body.appendChild(d);
+  $('otra').onclick = function () { d.remove(); abrir(pagina); };
+  $('volver').onclick = function () { d.remove(); abrir('menu'); };
+};
+
+var SHIM = '<script>(function(){' +
+  'function runner(){var s=null,f=null,o={};' +
+  'o.withSuccessHandler=function(h){s=h;return o};o.withFailureHandler=function(h){f=h;return o};o.withUserObject=function(){return o};' +
+  'return new Proxy(o,{get:function(t,n){if(n in t)return t[n];return function(){var a=[].slice.call(arguments);' +
+  'parent.appCall(n,a).then(function(r){s&&s(r)},function(e){if(f)f(e instanceof Error?e:new Error(String(e)));else alert(e.message||e)})}}})}' +
+  'window.google={script:{host:{close:function(){parent.appFin()}}}};' +
+  'Object.defineProperty(window.google.script,"run",{get:runner});' +
+  '})();<\/script><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">';
+
+// ============ PANTALLAS ============
+var pagina = 'menu';
+var COLORES = { vacuna: '#2E7D32', movimiento: '#1565C0', servicio: '#4527A0', corregir: '#C62828',
+  resumen: '#EF6C00', indicadores: '#880E4F', sanitario: '#00838F', movimientos: '#6A1B9A', servicios: '#AD1457', evolucion: '#5D4037', lluvias: '#0277BD', calendario: '#33691E' };
+
+function abrir(p) {
+  pagina = p;
+  var marco = $('marco'); marco.style.display = 'none'; marco.removeAttribute('srcdoc');
+  $('atras').style.display = p === 'menu' ? 'none' : '';
+  window.scrollTo(0, 0);
+  var ini = leer('init');
+  if (!leer('k')) return activar();
+  if (p === 'menu') return menu();
+  if (p === 'pend') return pendientes();
+  if (ini && ini.forms[p]) return formulario(p);
+  if (ini && ini.vistasT[p]) return vista(p);
+  menu();
+}
+$('atras').onclick = function () { abrir('menu'); };
+
+function activar() {
+  $('titulo').textContent = '🐄 HACIENDA';
+  $('pag').innerHTML = '<div class="aviso">Para empezar, abrí el link personal que te pasaron (una sola vez), o pegá tu código acá:</div>' +
+    '<input class="cod" id="cod" placeholder="Código" autocapitalize="off" autocorrect="off"><button class="btn" id="ok">Entrar</button>';
+  $('ok').onclick = function () { var v = $('cod').value.trim().replace(/.*k=/, ''); if (v) { grabar('k', v); actualizarDatos().then(function () { abrir('menu'); }); } };
+}
+
+function menu() {
+  pagina = 'menu';
+  $('titulo').textContent = '🐄 HACIENDA';
+  var ini = leer('init'), c = cola(), err = c.filter(function (x) { return x.estado === 'error'; }).length;
+  var h = '';
+  if (leer('authmal')) h += '<div class="aviso err">Tu código ya no es válido. Pedí un link nuevo.</div>';
+  if (!ini) {
+    h += '<div class="aviso amar">' + (actualizando ? 'Descargando datos de la planilla…' : 'Todavía no se descargaron los datos. Abrí la app con señal una vez.') + '</div>';
+    if (!actualizando) h += '<button class="btn" onclick="actualizarDatos().then(menu)">🔄 Reintentar</button>';
+    $('pag').innerHTML = h; return;
+  }
+  if (c.length) h += '<div class="aviso ' + (err ? 'err' : 'amar') + '" onclick="abrir(\'pend\')">' +
+    (c.length - err ? '⏳ ' + (c.length - err) + ' carga(s) guardadas en el teléfono, se suben solas con señal. ' : '') +
+    (err ? '⚠️ ' + err + ' con error, tocá para ver.' : 'Tocá para ver.') + '</div>';
+  h += '<div class="cab"><div style="font-size:13px;color:#555;font-weight:bold">TOTAL DE CABEZAS</div><div class="n">' + esc(ini.cab.total) + '</div>' +
+    '<div class="c">' + esc(ini.cab.campos) + '</div><div class="u">' + esc(ini.cab.ultima) + '</div>' +
+    '<div class="u">Cargando como <b>' + esc(ini.quien) + '</b> · datos del ' + hora(ini.cuando) + '</div></div>';
+  var t = function (k, big) { var x = ini.forms[k] || { t: ini.vistasT[k] }; return '<button class="tile' + (big ? ' big' : '') + '" style="background:' + COLORES[k] + '" onclick="abrir(\'' + k + '\')">' + esc(x.t) + '</button>'; };
+  h += '<h3>✏️ CARGAR DATOS</h3><div class="grid">' + Object.keys(ini.forms).map(function (k) { return t(k, 1); }).join('') + '</div>';
+  h += '<h3>👀 VER INFORMACIÓN</h3><div class="grid">' + Object.keys(ini.vistasT).map(function (k) { return t(k); }).join('') +
+    '<button class="tile" style="background:#546E7A" onclick="abrir(\'pend\')">📲 Sin subir / últimas</button>' +
+    '<button class="tile" style="background:#455A64" onclick="actualizarDatos().then(function(){abrir(\'menu\')});this.textContent=\'🔄 Actualizando…\'">🔄 Actualizar datos</button></div>';
+  $('pag').innerHTML = h;
+}
+
+function formulario(k) {
+  var ini = leer('init');
+  $('titulo').textContent = ini.forms[k].t;
+  $('pag').innerHTML = '';
+  ultimoGuardado = '';
+  var html = (ini.base + ini.forms[k].html).replace('<head>', '<head>' + SHIM);
+  var marco = $('marco');
+  var alto = document.querySelector('.barra').offsetHeight;
+  marco.style.top = alto + 'px'; marco.style.height = (window.innerHeight - alto) + 'px';
+  marco.srcdoc = html; marco.style.display = 'block';
+}
+window.addEventListener('resize', function () { var m = $('marco'); if (m.style.display === 'block') { var a = document.querySelector('.barra').offsetHeight; m.style.height = (window.innerHeight - a) + 'px'; } });
+
+function vista(k) {
+  var ini = leer('init'), v = leer('vistas');
+  $('titulo').textContent = ini.vistasT[k];
+  var filas = v && v.d && v.d[k];
+  if (!filas) { $('pag').innerHTML = '<div class="aviso amar">Todavía no hay datos guardados. Tocá "Actualizar datos" con señal.</div>'; return; }
+  var n = filas[0] ? filas[0].length : 0;
+  var h = '<div class="ayuda">Datos del ' + hora(v.cuando) + '. Deslizá hacia el costado para ver todas las columnas.</div><div class="tw"><table>';
+  filas.forEach(function (r) {
+    var llenas = r.filter(function (c) { return String(c).trim() !== ''; });
+    if (llenas.length === 1) h += '<tr class="h"><td colspan="' + n + '">' + esc(llenas[0]) + '</td></tr>';
+    else h += '<tr>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>';
+  });
+  $('pag').innerHTML = h + '</table></div>';
+}
+
+function pendientes() {
+  $('titulo').textContent = '📲 Sin subir / últimas';
+  var c = cola(), h = '';
+  if (!c.length) h += '<div class="aviso">✅ No hay cargas pendientes: todo está en la planilla.</div>';
+  else h += '<div class="ayuda">Se suben solas cuando hay señal.</div><button class="btn" onclick="sincronizar()">⏫ Subir ahora</button><h3>SIN SUBIR</h3>';
+  c.forEach(function (it) {
+    h += '<div class="item' + (it.estado === 'error' ? ' error' : '') + '"><div class="d">' + esc(describir(it)) + '</div>' +
+      '<div class="m">Cargada el ' + hora(it.creado) + (it.estado === 'error' ? '<br><b style="color:#C62828">No se pudo guardar: ' + esc(it.error) + '</b>' : ' · esperando señal') + '</div>' +
+      (it.estado === 'error' ? '<button class="btn chico" onclick="reintentar(\'' + it.id + '\')">Reintentar</button>' : '') +
+      '<button class="btn chico rojo" onclick="borrar(\'' + it.id + '\')">Borrar</button></div>';
+  });
+  var hechos = leer('hechos', []);
+  if (hechos.length) h += '<h3>ÚLTIMAS SUBIDAS DESDE ESTE TELÉFONO</h3>' + hechos.map(function (x) { return '<div class="item"><div class="d">' + esc(x.d) + '</div><div class="m">✅ ' + hora(x.cuando) + '</div></div>'; }).join('');
+  $('pag').innerHTML = h;
+}
+function borrar(id) { if (confirm('¿Borrar esta carga? No se va a subir a la planilla.')) { grabar('cola', cola().filter(function (x) { return x.id !== id; })); pintarEstado(); pendientes(); } }
+function reintentar(id) { grabar('cola', cola().map(function (x) { if (x.id === id) { delete x.estado; delete x.error; } return x; })); pendientes(); sincronizar(); }
+
+// ============ ARRANQUE ============
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+pintarEstado();
+abrir('menu');
+if (leer('k')) { actualizarDatos(); sincronizar(); }
+</script>
+</body>
+</html>
