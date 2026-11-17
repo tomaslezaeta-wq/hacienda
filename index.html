@@ -191,10 +191,10 @@ window.appFin = function () {
 };
 
 var SHIM = '<script>(function(){' +
-  'function runner(){var s=null,f=null,o={};' +
-  'o.withSuccessHandler=function(h){s=h;return o};o.withFailureHandler=function(h){f=h;return o};o.withUserObject=function(){return o};' +
-  'return new Proxy(o,{get:function(t,n){if(n in t)return t[n];return function(){var a=[].slice.call(arguments);' +
-  'parent.appCall(n,a).then(function(r){s&&s(r)},function(e){if(f)f(e instanceof Error?e:new Error(String(e)));else alert(e.message||e)})}}})}' +
+  'function runner(){var s=null,f=null,o={},p;' +
+  'o.withSuccessHandler=function(h){s=h;return p};o.withFailureHandler=function(h){f=h;return p};o.withUserObject=function(){return p};' +
+  'p=new Proxy(o,{get:function(t,n){if(n in t)return t[n];return function(){var a=[].slice.call(arguments);' +
+  'parent.appCall(n,a).then(function(r){s&&s(r)},function(e){if(f)f(e instanceof Error?e:new Error(String(e)));else alert(e.message||e)})}}});return p}' +
   'window.google={script:{host:{close:function(){parent.appFin()}}}};' +
   'Object.defineProperty(window.google.script,"run",{get:runner});' +
   '})();<\/script><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">';
